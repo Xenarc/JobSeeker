@@ -172,70 +172,57 @@ def writeToHTML(jobs, file):
 	htmlfile.write("</table>")
 	htmlfile.close()
 
+def outputJobsToJson(jobs):
+	jsonJobs = {}
 
-
-jobsList = OrderedDict()
-jobsList.update(parse("indeed"))
-jobsList.update(parse("seek"))
-
-jobsList = OrderedDict(sorted(jobsList.items(), key=lambda x: x[1][0]))
-
-
-jsonJobs = {}
-
-for ID in jobsList:
-	j = [{"title" : jobsList[ID][1],
-				"score" : jobsList[ID][0],
-				"url" : jobsList[ID][4],
-				"site" : jobsList[ID][3],
-				"description" : jobsList[ID][5],
-			}]
-	
-	if jobsList[ID][2] > -1:
-		j[0]["experience"] = jobsList[ID][2]
-	
-	jsonJobs[ID] = j
-
-jsonJobsFile = open("jobs.json", "w+")
-jsonJobsFile.write(json.dumps(jsonJobs, indent=2))
-jsonJobsFile.close()
-
-exit()
-
-writeToHTML(jobsList, outputfile)
-
-webbrowser.open_new(os.path.abspath("jobs.html").replace("/mnt/c", "c:/"))
-
-
-
-
-
-
-
-
-
-
-# searchPage = requests.get('https://www.seek.com.au/jobs-in-information-communication-technology/in-Warranwood-VIC-3134?page=' + str(i) + '&salaryrange=40000-80000&salarytype=annual&subclassification=6287%2C6290%2C6299%2C6301%2C6302%2C6296')
-	
-	# searchTree = html.fromstring(searchPage.content)
-	
-	# jobs = searchTree.xpath('//a[@data-automation="jobTitle"]/text()')
-	# ids = searchTree.xpath('//@data-job-id')
-	
-	# # (include, exclude, optionalExclude, optionalInclude) = getFilter()
-	
-	# for ID in (ids):
-	# 	jobPage = requests.get("https://www.seek.com.au/job/" + ID)
-	# 	jobTree = html.fromstring(jobPage.content)
-	# 	description = ''.join(jobTree.xpath('//*[@data-automation="jobDescription"]/descendant::*/text()')).lower()
-	# 	title = jobTree.xpath('//span[@data-automation="job-detail-title"]/span/h1/text()')[0]
+	for ID in jobs:
+		j = [{"title" : jobs[ID][1],
+					"score" : jobs[ID][0],
+					"url" : jobs[ID][4],
+					"site" : jobs[ID][3],
+					"description" : jobs[ID][5],
+				}]
 		
-	# 	job = check(description)
-	# 	if job != None:
-	# 		jobsList[ID] = job
-			
-	# 	pbar.update(1)
-	# if short:
-	# 	break
+		if jobs[ID][2] > -1:
+			j[0]["experience"] = jobs[ID][2]
+		
+		jsonJobs[ID] = j
+
+	jsonJobsFile = open("jobs.json", "w+")
+	jsonJobsFile.write(json.dumps(jsonJobs, indent=2))
+	jsonJobsFile.close()
+
+def clearScr():
+	print(chr(27)+'[2j')
+	print('\033c')
+	print('\x1bc')
+
+while 1:
+	print("Search for jobs -> HTML: 1")
+	print("View HTML: 2")
+	print("Exit: 0")
+	# print("Show jobs output: 2")
+	response = input("> ")
+	
+	if response == "1":
+		jobsList = OrderedDict()
+		jobsList.update(parse("indeed"))
+		jobsList.update(parse("seek"))
+
+		jobsList = OrderedDict(sorted(jobsList.items(), key=lambda x: x[1][0]))
 
 
+		outputJobsToJson(jobsList)
+
+		writeToHTML(jobsList, outputfile)
+		
+	elif response == "2":
+		print("file://" + os.getcwd().replace("/mnt/c", "c:/") + ("/jobs.html"))
+		print("")
+		webbrowser.open_new('file://' + os.path.dirname(os.path.abspath(__file__)).replace("/mnt/g", "g:/") + ("/jobs.html"))
+		
+	elif response == "0":
+		exit()
+		
+	else:
+		print("Invalid input!")
