@@ -12,7 +12,7 @@ import math
 
 outputfile = "jobs.html"
 query = "Software Developer"
-short = True
+short = False
 
 def check(title, description, optionalInclude, optionalExclude, exclude, include):
 	score = 0
@@ -57,7 +57,7 @@ def parse(site):
 	ListOfJobs = {}
 	searchPage = requests.get({
 		'seek': 'https://www.seek.com.au/jobs-in-information-communication-technology/in-Warranwood-VIC-3134?&salaryrange=40000-80000&salarytype=annual&subclassification=6287%2C6290%2C6299%2C6301%2C6302%2C6296',
-		'indeed': 'https://au.indeed.com/jobs?as_and=software+developer&as_phr=%22Include%22&as_any=&as_not=Exclude&as_ttl=&as_cmp=&jt=all&st=&as_src=&salary=&radius=100&l=Ringwood+VIC+3134&fromage=any&limit=50&sort=&psf=advsrch&from=advancedsearch'
+		'indeed': 'https://au.indeed.com/jobs?as_and=software+developer&as_phr=%22Include%22&as_any=&as_not=Exclude&as_ttl=&as_cmp=&jt=all&st=&as_src=&salary=&radius=100&l=Ringwood+VIC+3134&fromage=any&limit=100&sort=&psf=advsrch&from=advancedsearch'
 	}[site])
 	
 	searchTree = html.fromstring(searchPage.content)
@@ -79,7 +79,7 @@ def parse(site):
 	
 	jobsPerPage = {
 		'seek': 22,
-		'indeed': 50
+		'indeed': 100
 	}[site]
 	
 	with tqdm(total=int(numJobs) if not short else jobsPerPage) as pbar: 
@@ -102,8 +102,6 @@ def parse(site):
 			
 			for i, title in enumerate(titles):
 				titles[i] = re.sub(r"/|\n|\)|\(|\\", ' ', title) # replaces: / \n ) ( \
-			
-			exit()
 			
 			for ID in ids:
 				url = {
@@ -175,33 +173,34 @@ def writeToHTML(jobs, file):
 	htmlfile.close()
 
 
+
 jobsList = OrderedDict()
 jobsList.update(parse("indeed"))
-# jobsList.update(parse("seek"))
+jobsList.update(parse("seek"))
 
 jobsList = OrderedDict(sorted(jobsList.items(), key=lambda x: x[1][0]))
 
 
-# jsonJobs = {}
+jsonJobs = {}
 
-# for ID in jobsList:
-# 	j = [{"title" : jobsList[ID][1],
-# 				"score" : jobsList[ID][0],
-# 				"url" : jobsList[ID][4],
-# 				"site" : jobsList[ID][3],
-# 				"description" : jobsList[ID][5],
-# 			}]
+for ID in jobsList:
+	j = [{"title" : jobsList[ID][1],
+				"score" : jobsList[ID][0],
+				"url" : jobsList[ID][4],
+				"site" : jobsList[ID][3],
+				"description" : jobsList[ID][5],
+			}]
 	
-# 	if jobsList[2] != None:
-# 		j[5]["experience"] = jobsList[ID][2]
+	if jobsList[ID][2] > -1:
+		j[0]["experience"] = jobsList[ID][2]
 	
-# 	jsonJobs[ID] = j
+	jsonJobs[ID] = j
 
-# jsonJobsFile = open("jobs.json", "w+")
-# jsonJobsFile.write(json.dumps(jsonJobs, indent=2))
-# jsonJobsFile.close()
+jsonJobsFile = open("jobs.json", "w+")
+jsonJobsFile.write(json.dumps(jsonJobs, indent=2))
+jsonJobsFile.close()
 
-# exit()
+exit()
 
 writeToHTML(jobsList, outputfile)
 
