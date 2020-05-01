@@ -1,0 +1,55 @@
+{
+	"OPTIONAL_INCLUDE": {
+		"junior": 5,
+		"graduate": 4,
+		"git": 1,
+		"Android": 3,
+		"UWP": 5,
+		"Agile": 2,
+		"AWS": 2,
+		"Javascript": 6,
+		"Word": 9,
+		"Excel": 9,
+		"KiCad": 7,
+		"AutoCAD": 2,
+		"C": 3,
+		"Java": 4,
+		"Linux": 6,
+		"HTML": 7,
+		"CSS": 7,
+		"JS": 7,
+		"jQuery": 8,
+		"PHP": 8,
+		"MySQL": 7,
+		"XML": 8,
+		"Unix": 5,
+		"Kotlin": 7,
+		"R": 7,
+		"Python": 5,
+		"Batch": 5,
+		"Julia": 1
+	},
+	"OPTIONAL_EXCLUDE": {
+		"MVC": 8,
+		"Senior": 10,
+		"sr": 10,
+		"Experienced": 8,
+		"PostgreSQL": 10,
+		"Magneto": 8,
+		"degree": 3,
+		"bachelor": 3,
+		"ASP.NET": 6, 
+		"sales" : 7,
+		"certified" : 6,
+		"designer" : 3,
+		"Call center" : 8,
+		"Call centre" : 8, 
+		"team lead" : 7
+	}, 
+	"EXCLUDE": {
+		"helpdesk": 8
+	},
+	"INCLUDE": {
+		
+	}
+}

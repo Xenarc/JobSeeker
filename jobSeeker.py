@@ -10,148 +10,220 @@ import re
 from collections import OrderedDict 
 import math
 
-def check(description):
-    score = 0
-    for optIncStr in optionalInclude:
-        if optIncStr in description:
-            score = score + optionalInclude[optIncStr]
-
-        for optExtStr in optionalExclude:
-            if optExtStr in description:
-                score = score - optionalExclude[optExtStr]
-
-        # Gets list of all strings with 1-2 years, 1+ year, 6 year, 4-5+ years etc.
-        years = re.findall(r"((^-?)[1-9]+?.year)|([1-9]-[1-9].?.year)|(^-?)[1-9]\+.year", description)
-        experience = -1
-        if len(years) != 0:
-            nums = [int(s) for s in list(years[0][2]) if s.isdigit()]
-            experience = sum(nums) / len(nums)
-        
-        if experience > 3:
-            score = score - experience * 2
-            
-        elif experience != -1:
-            score = score + 3 / experience
-
-        for years in range(10):
-            re.search("", description)
-        for ExStr in exclude:
-            if ExStr.lower() in description:
-                score -= 1000
-        
-        for InStr in include:
-            if InStr.lower() not in description:
-                score -= 1000
-        
-        if score > -50:
-            return (score, title, experience)
-        else:
-            return None
-        
-
+outputfile = "jobs.html"
 query = "Software Developer"
-short = True
-skip = True
+short = False
 
-if skip == False:
-    searchPage = requests.get('https://www.seek.com.au/' + query.replace(' ', '-') + '-jobs/in-Warranwood-VIC-3134/full-time?salaryrange=40000-80000&salarytype=annual')
-    searchTree = html.fromstring(searchPage.content)
+def check(title, description, optionalInclude, optionalExclude, exclude, include):
+	score = 0
+	description = title + "\n" + description
+	
+	for optIncStr in optionalInclude:
+		if optIncStr in description:
+			score = score + optionalInclude[optIncStr]
 
-    jobsList = OrderedDict()
+		for optExtStr in optionalExclude:
+			if optExtStr in description:
+				score = score - optionalExclude[optExtStr]
 
-    numjobs = searchTree.xpath('//*[@data-automation="totalJobsCount"]/text()')[0]
-    with tqdm(total=int(numjobs)) as pbar:
-        numPages = int(math.ceil(float(numjobs))/22.0)
-        for i in range(numPages):
-            searchPage = requests.get('https://www.seek.com.au/jobs-in-information-communication-technology/in-Warranwood-VIC-3134?page=' + str(i) + '&salaryrange=40000-80000&salarytype=annual&subclassification=6287%2C6290%2C6299%2C6301%2C6302%2C6296')
-            
-            searchTree = html.fromstring(searchPage.content)
-            
-            jobs = searchTree.xpath('//a[@data-automation="jobTitle"]/text()')
-            ids = searchTree.xpath('//@data-job-id')
-            
-            exclude = []
-            include = []
-            optionalInclude =  {"junior"        : 5, 
-                                "graduate"      : 3, 
-                                "git"           : 1, 
-                                "Android"       : 3, 
-                                "UWP"           : 5, 
-                                "Agile"         : 2, 
-                                "AWS"           : 2,
-                                "Javascript"    : 6, 
-                                "Word"          : 9, 
-                                "Excel"         : 9, 
-                                "KiCad"         : 7, 
-                                "AutoCAD"       : 2, 
-                                "C#"            : 3, 
-                                "Java"          : 4, 
-                                "Linux"         : 6, 
-                                "HTML"          : 7, 
-                                "CSS"           : 7, 
-                                "JS"            : 7,  
-                                "jQuery"        : 8, 
-                                "PHP"           : 8, 
-                                "MySQL"         : 7, 
-                                "XML"           : 8, 
-                                "Unix"          : 5, 
-                                "Kotlin"        : 7, 
-                                "R"             : 7, 
-                                "Python"        : 5, 
-                                "C++"           : 5, 
-                                "Batch"         : 5, 
-                                "Julia"         : 1}
-            optionalExclude =  {"ASP.NET"       : 6, 
-                                "MVC"           : 8,  
-                                "Senior"        : 10, 
-                                "Experienced"   : 4,
-                                "PostgreSQL"    : 10, 
-                                "Magneto"       : 8, 
-                                "degree"        : 3,
-                                "bachelor"      : 3}
-            for ID in (ids):
-                jobPage = requests.get("https://www.seek.com.au/job/" + ID)
-                jobTree = html.fromstring(jobPage.content)
-                description = ''.join(jobTree.xpath('//*[@data-automation="jobDescription"]/descendant::*/text()')).lower()
-                title = jobTree.xpath('//span[@data-automation="job-detail-title"]/span/h1/text()')[0]
-                
-                job = check(description)
-                if job != None:
-                    jobsList[ID] = job
-                    
-                pbar.update(1)
-            if short:
-                break
-            
-        
-    jobsList = OrderedDict(sorted(jobsList.items(), key=lambda x: x[1][0]))
+		for ExStr in exclude:
+			if ExStr.lower() in description:
+				score -= 1000
+		
+		for InStr in include:
+			if InStr.lower() not in description:
+				score -= 1000
+				
+		# Gets list of all strings with 1-2 years, 1+ year, 6 year, 4-5+ years etc.
+		years = re.findall(r"((^-?)[1-9]+?.year)|([1-9]-[1-9].?.year)|(^-?)[1-9]\+.year", description)
+		experience = -1
+		if len(years) != 0:
+			nums = [int(s) for s in list(years[0][2]) if s.isdigit()]
+			experience = sum(nums) / len(nums)
+		
+		if experience > 3:
+			score = score - experience * 2
+			
+		elif experience != -1:
+			score = score + 3 / experience
 
-    htmlfile = open("jobs.html","w+")
-    htmlfile.write("<table style='text-align:left;'>")
-    htmlfile.write("<tr style='font-size:18pt;text-align:center;'><th>Score</th><th>Title</th><th>Link</th><th>Years of Experience</th></tr>")
-    for k in jobsList:
-        htmlfile.write("<tr>")
-        htmlfile.write("<th>" + str(jobsList[k][0]) + "</th>")
-        htmlfile.write("<th>" + str(jobsList[k][1]) + "</th>")
-        htmlfile.write("<th>" + "<a href='http://seek.com.au/job/" + str(k) + "'>" + str(k) + "</a>" + "</th>")
-        htmlfile.write("<th style='text-align:center;'>" + ("" if jobsList[k][2] == -1 else str(jobsList[k][2])) + "</th>")
-        htmlfile.write("</tr>")
-    htmlfile.write("</table>")
-    htmlfile.close()
+		for years in range(10):
+			re.search("", description)
+		
+		return (score, title, experience) if score > -50 else None
 
-    webbrowser.open_new(os.path.abspath("jobs.html").replace("/mnt/c", "c:/"))
-    # for k, v in jobsList:
-    #     webbrowser.open_new_tab("http://seek.com.au/job/" + k)
+def parse(site):
+	
+	ListOfJobs = {}
+	searchPage = requests.get({
+		'seek': 'https://www.seek.com.au/jobs-in-information-communication-technology/in-Warranwood-VIC-3134?&salaryrange=40000-80000&salarytype=annual&subclassification=6287%2C6290%2C6299%2C6301%2C6302%2C6296',
+		'indeed': 'https://au.indeed.com/jobs?as_and=software+developer&as_phr=%22Include%22&as_any=&as_not=Exclude&as_ttl=&as_cmp=&jt=all&st=&as_src=&salary=&radius=100&l=Ringwood+VIC+3134&fromage=any&limit=4&sort=&psf=advsrch&from=advancedsearch'
+	}[site])
+	
+	searchTree = html.fromstring(searchPage.content)
+	
+	if site == "seek":
+		numJobs = searchTree.xpath('//*[@data-autsomation="totalJobsCount"]/text()')[0],
+	elif site == "indeed":
+		numJobs = searchTree.xpath('//*[@id="searchCountPages"]/text()')[0].split()[-2]
+	else:
+		print("Site identifier error!")
+		exit()
+	numJobs = int(numJobs)
+	
+	# numJobs = searchTree.xpath({
+	# 	'seek' : '//*[@data-automation="totalJobsCount"]/text()',
+	# 	'indeed':'#searchCountPages/text()'
+	# }[site])
+	
+	jobsPerPage = {
+		'seek': 22,
+		'indeed': 50
+	}[site]
+	
+	with tqdm(total=int(numJobs) if not short else jobsPerPage) as pbar: 
+		numPages = math.ceil(float(numJobs)/jobsPerPage)
+		
+		for page in range(numPages):
+			titles = searchTree.xpath({
+				'seek': '//a[@data-automation="jobTitle"]/text()',
+				# 'indeed': '//a[contains(@class, "jobtitle")]/@title' #E$###
+				# 'indeed': '//h2[@class="title"]/span'
+				# 'indeed': '//span[@class="new"]'
+				'indeed': '//span[@class="new"]'
+			}[site])
+			
+			print("Count: ", len(titles))
+			try:
+				print(titles[0])
+			except Exception:
+				exit()
+			exit()
+			
+			ids = searchTree.xpath({
+				'seek': '//@data-job-id',
+				'indeed': '//div[contains(@class, "jobsearch-SerpJobCard")]/@data-jk'
+			}[site])
+			
+			# print("duplicates title? ", len(jobs) != len(set(jobs)))
+			# print("duplicates id? ", len(ids) != len(set(ids)))
+			# print([(str(x) + "\n") for x in jobs])
+			
+			for i, title in enumerate(titles):
+				titles[i] = re.sub(r'/|\n|\)|\(|\\', ' ', title) # replaces: / \n ) ( \
+			
+			print(titles)
+			exit()
+			
+			for ID in ids:
+				url = {
+					'seek': "https://www.seek.com.au/job/",
+					'indeed': "https://au.indeed.com/viewjob?jk="
+				}[site] + ID
+				
+				jobPage = requests.get(url)
+				
+				jobTree = html.fromstring(jobPage.content)
+				
+				description = ''.join(jobTree.xpath({
+					'seek': '//*[@data-automation="jobDescription"]/descendant::*/text()',
+					'indeed': '//*[@id="jobDescriptionText"]/descendant::*/text()'
+				}[site])).lower()
+				
+				description = re.sub(r'\.|,|:|\n|\)|\(|\\', ' ', description) # replaces: / \n ) ( \ . , :, 
+				
+				title = jobTree.xpath({
+					'seek': '//span[@data-automation="job-detail-title"]/span/h1/text()',
+					'indeed': '//h3[contains(@class, "jobsearch-JobInfoHeader-title")]/text()'
+				}[site])[0]
+				
+				job = check(title, description, *getFilter())
+				
+				pbar.update(1)
+				
+				if job != None:
+					ListOfJobs[ID] = (*job, site, url)
+					# ListOfJobs[ID] has format:
+					# ListOfJobs[ID] = (
+					#										score, 			[0]
+					#										title, 			[1]
+					#										experience,	[2]
+					#										siteName, 	[3]
+					#										url					[4]
+					#										 )
+				
+			if short:
+				break
+		
+	return ListOfJobs
 
-publisher = "123412341234123"
-options = ["format=json", "l=3134", "radius=40", "jt=fulltime", "co=au", "q=" + query, ]
+def getFilter():
+	with open("filter.json", "r") as f:
+		Filter = json.load(f)
+		
+	Inc = Filter["INCLUDE"]
+	Exc = Filter["EXCLUDE"]
+	OptExc = Filter["OPTIONAL_EXCLUDE"]
+	OptInc = Filter["OPTIONAL_INCLUDE"]
+	return (OptInc, OptExc, Exc, Inc)
 
-options = '&'.join(options)
-indeedJson = requests.get("https://api.indeed.com/ads/apisearch?publisher=" + publisher + "&v=1&useragent=Mozilla&userip=" + socket.gethostbyname(socket.gethostname()) + options)
+def writeToHTML(jobs, file):
+	htmlfile = open(file,"w+")
+	htmlfile.write("<style>th{border-top:1px solid black;border-bottom:1px solid black;}</style>")
+	htmlfile.write("<table style='text-align:left;font-family:verdana;'>")
+	htmlfile.write("<tr style='font-size:18pt;text-align:center;'><th>Score</th><th>Title</th><th>Link</th><th>Years of Experience</th><th>ID</th></tr>")
+	for ID in jobs:
+			htmlfile.write("<tr>")
+			htmlfile.write("<th>" + str(jobs[ID][0]) + "</th>")
+			htmlfile.write("<th>" + str(jobs[ID][1]) + "</th>")
+			htmlfile.write("<th>" + "<a href='" + str(jobs[ID][4]) + "'>" + str(jobs[ID][3]) + "</a>" + "</th>")
+			htmlfile.write("<th style='text-align:center;'>" + ("" if jobs[ID][2] == -1 else str(jobs[ID][2])) + "</th>")
+			htmlfile.write("<th>" + str(ID) + "</th>")
+			htmlfile.write("</tr>")
+	htmlfile.write("</table>")
+	htmlfile.close()
 
-print(indeedJson.content)
-exit()
-indeedJson = json.loads(indeedJson.content)
 
-print(indeedJson['totalResults'])
+jobsList = OrderedDict()
+jobsList.update(parse("indeed"))
+# jobsList.update(parse("seek"))
+
+jobsList = OrderedDict(sorted(jobsList.items(), key=lambda x: x[1][0]))
+
+writeToHTML(jobsList, outputfile)
+
+webbrowser.open_new(os.path.abspath("jobs.html").replace("/mnt/c", "c:/"))
+
+
+
+
+
+
+
+
+
+
+# searchPage = requests.get('https://www.seek.com.au/jobs-in-information-communication-technology/in-Warranwood-VIC-3134?page=' + str(i) + '&salaryrange=40000-80000&salarytype=annual&subclassification=6287%2C6290%2C6299%2C6301%2C6302%2C6296')
+	
+	# searchTree = html.fromstring(searchPage.content)
+	
+	# jobs = searchTree.xpath('//a[@data-automation="jobTitle"]/text()')
+	# ids = searchTree.xpath('//@data-job-id')
+	
+	# # (include, exclude, optionalExclude, optionalInclude) = getFilter()
+	
+	# for ID in (ids):
+	# 	jobPage = requests.get("https://www.seek.com.au/job/" + ID)
+	# 	jobTree = html.fromstring(jobPage.content)
+	# 	description = ''.join(jobTree.xpath('//*[@data-automation="jobDescription"]/descendant::*/text()')).lower()
+	# 	title = jobTree.xpath('//span[@data-automation="job-detail-title"]/span/h1/text()')[0]
+		
+	# 	job = check(description)
+	# 	if job != None:
+	# 		jobsList[ID] = job
+			
+	# 	pbar.update(1)
+	# if short:
+	# 	break
+
 
