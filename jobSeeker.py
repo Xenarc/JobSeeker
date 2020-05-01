@@ -12,7 +12,7 @@ import math
 
 outputfile = "jobs.html"
 query = "Software Developer"
-short = False
+short = True
 
 def check(title, description, optionalInclude, optionalExclude, exclude, include):
 	score = 0
@@ -57,7 +57,7 @@ def parse(site):
 	ListOfJobs = {}
 	searchPage = requests.get({
 		'seek': 'https://www.seek.com.au/jobs-in-information-communication-technology/in-Warranwood-VIC-3134?&salaryrange=40000-80000&salarytype=annual&subclassification=6287%2C6290%2C6299%2C6301%2C6302%2C6296',
-		'indeed': 'https://au.indeed.com/jobs?as_and=software+developer&as_phr=%22Include%22&as_any=&as_not=Exclude&as_ttl=&as_cmp=&jt=all&st=&as_src=&salary=&radius=100&l=Ringwood+VIC+3134&fromage=any&limit=4&sort=&psf=advsrch&from=advancedsearch'
+		'indeed': 'https://au.indeed.com/jobs?as_and=software+developer&as_phr=%22Include%22&as_any=&as_not=Exclude&as_ttl=&as_cmp=&jt=all&st=&as_src=&salary=&radius=100&l=Ringwood+VIC+3134&fromage=any&limit=50&sort=&psf=advsrch&from=advancedsearch'
 	}[site])
 	
 	searchTree = html.fromstring(searchPage.content)
@@ -69,6 +69,7 @@ def parse(site):
 	else:
 		print("Site identifier error!")
 		exit()
+	
 	numJobs = int(numJobs)
 	
 	# numJobs = searchTree.xpath({
@@ -90,29 +91,18 @@ def parse(site):
 				# 'indeed': '//a[contains(@class, "jobtitle")]/@title' #E$###
 				# 'indeed': '//h2[@class="title"]/span'
 				# 'indeed': '//span[@class="new"]'
-				'indeed': '//span[@class="new"]'
+				# 'indeed': '//span[@class="new"]/*'
+				'indeed': '//div[contains(@class, "jobsearch-SerpJobCard") and not(@data-ci)]/h2/a/@title'
 			}[site])
-			
-			print("Count: ", len(titles))
-			try:
-				print(titles[0])
-			except Exception:
-				exit()
-			exit()
 			
 			ids = searchTree.xpath({
 				'seek': '//@data-job-id',
 				'indeed': '//div[contains(@class, "jobsearch-SerpJobCard")]/@data-jk'
 			}[site])
 			
-			# print("duplicates title? ", len(jobs) != len(set(jobs)))
-			# print("duplicates id? ", len(ids) != len(set(ids)))
-			# print([(str(x) + "\n") for x in jobs])
-			
 			for i, title in enumerate(titles):
-				titles[i] = re.sub(r'/|\n|\)|\(|\\', ' ', title) # replaces: / \n ) ( \
+				titles[i] = re.sub(r"/|\n|\)|\(|\\", ' ', title) # replaces: / \n ) ( \
 			
-			print(titles)
 			exit()
 			
 			for ID in ids:
@@ -142,7 +132,7 @@ def parse(site):
 				pbar.update(1)
 				
 				if job != None:
-					ListOfJobs[ID] = (*job, site, url)
+					ListOfJobs[ID] = (*job, site, url, description)
 					# ListOfJobs[ID] has format:
 					# ListOfJobs[ID] = (
 					#										score, 			[0]
@@ -150,6 +140,7 @@ def parse(site):
 					#										experience,	[2]
 					#										siteName, 	[3]
 					#										url					[4]
+					#										description [5]
 					#										 )
 				
 			if short:
@@ -189,6 +180,28 @@ jobsList.update(parse("indeed"))
 # jobsList.update(parse("seek"))
 
 jobsList = OrderedDict(sorted(jobsList.items(), key=lambda x: x[1][0]))
+
+
+# jsonJobs = {}
+
+# for ID in jobsList:
+# 	j = [{"title" : jobsList[ID][1],
+# 				"score" : jobsList[ID][0],
+# 				"url" : jobsList[ID][4],
+# 				"site" : jobsList[ID][3],
+# 				"description" : jobsList[ID][5],
+# 			}]
+	
+# 	if jobsList[2] != None:
+# 		j[5]["experience"] = jobsList[ID][2]
+	
+# 	jsonJobs[ID] = j
+
+# jsonJobsFile = open("jobs.json", "w+")
+# jsonJobsFile.write(json.dumps(jsonJobs, indent=2))
+# jsonJobsFile.close()
+
+# exit()
 
 writeToHTML(jobsList, outputfile)
 
