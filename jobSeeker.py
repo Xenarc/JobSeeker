@@ -1,4 +1,6 @@
 from lxml import html
+from itertools import chain
+import time
 import socket
 import os
 import webbrowser
@@ -10,7 +12,6 @@ import re
 from collections import OrderedDict 
 import math
 
-outputfile = "jobs.html"
 query = "Software Developer"
 short = False
 
@@ -34,64 +35,86 @@ def check(title, description, optionalInclude, optionalExclude, exclude, include
 			if InStr.lower() not in description:
 				score -= 1000
 				
-		# Gets list of all strings with 1-2 years, 1+ year, 6 year, 4-5+ years etc.
-		years = re.findall(r"((^-?)[1-9]+?.year)|([1-9]-[1-9].?.year)|(^-?)[1-9]\+.year", description)
+		# Gets list of all strings with 1-2 y, 1+ y, 6 y, 4-5+ y etc. from the description
+		years = re.findall(r"(\d{1,}(-|–)\d{1,}(\+?)y)|(((^-)|(^–))?\d{1,}(\+?)y)", description.replace(' ', ''))
+		yearss = years
 		experience = -1
 		if len(years) != 0:
-			nums = [int(s) for s in list(years[0][2]) if s.isdigit()]
+			# nums = [int(s) for s in list(years[0][2]) if s.isdigit()]
+			# nums = list(filter(lambda x: x != "", years)) # remove "" 's from lists
+			# re.sub(r"(\+)|y", "", item
+			
+			nums = [list(filter(lambda x: x != "", match))[0] for match in years] # Removes empty strings and cleans up tuple list nesting
+			nums = [re.sub(r"[\+y]", "", match).replace("–", "-").split("-") for match in nums] # Removes 'y's and '+'s, and parses each match to an array of str and also replaces "-" with "–"
+			
+			# This if else block is to try and gather a rough estimation of which number is the experience,
+			# thus: a match like "1-5 years" is more likely to be an experience expectation than
+			# "3+ years" which is more likely than "2 years" to be years of experience.
+			if "-" in nums:
+				nums = [x for x in nums if "-" in x][0]
+			elif "+" in nums:
+				nums = [x for x in nums if "+" in x][0]
+			else:
+				nums = nums[-1]
+			
+			# convert list of str to list of int
+			nums = list(map(int, nums))
+			
+			# get an average of "3-5 years" as 4 or just 3 if "3 years"
 			experience = sum(nums) / len(nums)
 		
-		if experience > 3:
-			score = score - experience * 2
+			# These calculations are pretty arbitrary saying that the less experience the better and the more - the worse
+			if experience > 9: # Probably not an experience if they're asking for 9+ years so dont count
+				experience = -1
+				continue
 			
-		elif experience != -1:
-			score = score + 3 / experience
-
-		for years in range(10):
-			re.search("", description)
+			elif experience > 3:
+				score = score - experience * 2
+			
+			else:
+				score = score + 3 / experience
 		
-		return (score, title, experience) if score > -50 else None
+		return (score, title, experience) #if score > -50 else None
 
 def parse(site):
 	
 	ListOfJobs = {}
-	searchPage = requests.get({
+	searchPage = {
 		'seek': 'https://www.seek.com.au/jobs-in-information-communication-technology/in-Warranwood-VIC-3134?&salaryrange=40000-80000&salarytype=annual&subclassification=6287%2C6290%2C6299%2C6301%2C6302%2C6296',
-		'indeed': 'https://au.indeed.com/jobs?as_and=software+developer&as_phr=%22Include%22&as_any=&as_not=Exclude&as_ttl=&as_cmp=&jt=all&st=&as_src=&salary=&radius=100&l=Ringwood+VIC+3134&fromage=any&limit=100&sort=&psf=advsrch&from=advancedsearch'
-	}[site])
-	
+		'indeed': 'https://au.indeed.com/jobs?as_and=software+developer&as_phr=%22Include%22&as_any=&as_not=Exclude&as_ttl=&as_cmp=&jt=all&st=&as_src=&salary=&radius=50&l=Ringwood+VIC+3134&fromage=any&limit=22&sort=&psf=advsrch&from=advancedsearch'
+	}
+	searchPage = requests.get(searchPage[site])
 	searchTree = html.fromstring(searchPage.content)
 	
 	if site == "seek":
-		numJobs = searchTree.xpath('//*[@data-autsomation="totalJobsCount"]/text()')[0],
+		numJobs = int(searchTree.xpath('//*[@data-automation="totalJobsCount"]/text()')[0]),
+		numJobs = numJobs[0]
 	elif site == "indeed":
-		numJobs = searchTree.xpath('//*[@id="searchCountPages"]/text()')[0].split()[-2]
+		numJobs = int(searchTree.xpath('//*[@id="searchCountPages"]/text()')[0].split()[-2])
 	else:
 		print("Site identifier error!")
 		exit()
 	
-	numJobs = int(numJobs)
-	
-	# numJobs = searchTree.xpath({
-	# 	'seek' : '//*[@data-automation="totalJobsCount"]/text()',
-	# 	'indeed':'#searchCountPages/text()'
-	# }[site])
-	
 	jobsPerPage = {
 		'seek': 22,
-		'indeed': 100
-	}[site]
+		'indeed': 22
 	
-	with tqdm(total=int(numJobs) if not short else jobsPerPage) as pbar: 
+	}[site]
+	print("Number of Jobs found: " + str(numJobs))
+	with tqdm(total=numJobs if not short else jobsPerPage) as pbar: 
 		numPages = math.ceil(float(numJobs)/jobsPerPage)
 		
 		for page in range(numPages):
+			searchPage = {
+				'seek': 'https://www.seek.com.au/jobs-in-information-communication-technology/in-Warranwood-VIC-3134?page=' + str(page) + '&salaryrange=40000-80000&salarytype=annual&subclassification=6287%2C6290%2C6299%2C6301%2C6302%2C6296',
+				'indeed': 'https://au.indeed.com/jobs?q=software+developer&l=Ringwood+VIC+3134&limit=22&radius=50&start=' + str(page * jobsPerPage)
+			}
+			
+			searchPage = requests.get(searchPage[site])
+			searchTree = html.fromstring(searchPage.content)
+			
 			titles = searchTree.xpath({
 				'seek': '//a[@data-automation="jobTitle"]/text()',
-				# 'indeed': '//a[contains(@class, "jobtitle")]/@title' #E$###
-				# 'indeed': '//h2[@class="title"]/span'
-				# 'indeed': '//span[@class="new"]'
-				# 'indeed': '//span[@class="new"]/*'
 				'indeed': '//div[contains(@class, "jobsearch-SerpJobCard") and not(@data-ci)]/h2/a/@title'
 			}[site])
 			
@@ -104,6 +127,8 @@ def parse(site):
 				titles[i] = re.sub(r"/|\n|\)|\(|\\", ' ', title) # replaces: / \n ) ( \
 			
 			for ID in ids:
+				pbar.update(1)
+				
 				url = {
 					'seek': "https://www.seek.com.au/job/",
 					'indeed': "https://au.indeed.com/viewjob?jk="
@@ -120,14 +145,21 @@ def parse(site):
 				
 				description = re.sub(r'\.|,|:|\n|\)|\(|\\', ' ', description) # replaces: / \n ) ( \ . , :, 
 				
-				title = jobTree.xpath({
-					'seek': '//span[@data-automation="job-detail-title"]/span/h1/text()',
-					'indeed': '//h3[contains(@class, "jobsearch-JobInfoHeader-title")]/text()'
-				}[site])[0]
+				try:
+					title = jobTree.xpath({
+						'seek': '//span[@data-automation="job-detail-title"]/span/h1/text()',
+						'indeed': '//h3[contains(@class, "jobsearch-JobInfoHeader-title")]/text()'
+					}[site])[0]
+				
+				except Exception as e:
+					print("ERROR: ")
+					print(str(jobTree.xpath({
+						'seek': '//span[@data-automation="job-detail-title"]/span/h1/text()',
+						'indeed': '//h3[contains(@class, "jobsearch-JobInfoHeader-title")]/text()'
+					}[site])))
+				
 				
 				job = check(title, description, *getFilter())
-				
-				pbar.update(1)
 				
 				if job != None:
 					ListOfJobs[ID] = (*job, site, url, description)
@@ -147,7 +179,8 @@ def parse(site):
 	return ListOfJobs
 
 def getFilter():
-	with open("filter.json", "r") as f:
+	
+	with open(os.path.dirname(os.path.realpath(__file__)) + "/filter.json", "r") as f:
 		Filter = json.load(f)
 		
 	Inc = Filter["INCLUDE"]
@@ -156,7 +189,8 @@ def getFilter():
 	OptInc = Filter["OPTIONAL_INCLUDE"]
 	return (OptInc, OptExc, Exc, Inc)
 
-def writeToHTML(jobs, file):
+def writeToHTML(jobs):
+	file = os.path.dirname(os.path.realpath(__file__)) + "/jobs.html"
 	htmlfile = open(file,"w+")
 	htmlfile.write("<style>th{border-top:1px solid black;border-bottom:1px solid black;}</style>")
 	htmlfile.write("<table style='text-align:left;font-family:verdana;'>")
@@ -188,7 +222,7 @@ def outputJobsToJson(jobs):
 		
 		jsonJobs[ID] = j
 
-	jsonJobsFile = open("jobs.json", "w+")
+	jsonJobsFile = open(os.path.dirname(os.path.realpath(__file__)) + "/jobs.json", "w+")
 	jsonJobsFile.write(json.dumps(jsonJobs, indent=2))
 	jsonJobsFile.close()
 
@@ -197,32 +231,38 @@ def clearScr():
 	print('\033c')
 	print('\x1bc')
 
+
 while 1:
+	clearScr()
+	jobsList = OrderedDict()
 	print("Search for jobs -> HTML: 1")
 	print("View HTML: 2")
 	print("Exit: 0")
-	# print("Show jobs output: 2")
+	
 	response = input("> ")
 	
 	if response == "1":
-		jobsList = OrderedDict()
-		jobsList.update(parse("indeed"))
-		jobsList.update(parse("seek"))
+		
+		jobsList = OrderedDict(chain(jobsList.items(), parse("seek").items()))
+		jobsList = OrderedDict(chain(jobsList.items(), parse("indeed").items()))
 
 		jobsList = OrderedDict(sorted(jobsList.items(), key=lambda x: x[1][0]))
 
 
 		outputJobsToJson(jobsList)
 
-		writeToHTML(jobsList, outputfile)
+		writeToHTML(jobsList)
 		
 	elif response == "2":
-		print("file://" + os.getcwd().replace("/mnt/c", "c:/") + ("/jobs.html"))
+		print("file://" + os.path.dirname(os.path.realpath(__file__)).replace("/mnt/c", "c:/") + ("/jobs.html"))
 		print("")
-		webbrowser.open_new('file://' + os.path.dirname(os.path.abspath(__file__)).replace("/mnt/g", "g:/") + ("/jobs.html"))
+		webbrowser.open_new('file://' + os.path.dirname(os.path.realpath(__file__)).replace("/mnt/g", "g:/") + ("/jobs.html"))
 		
 	elif response == "0":
 		exit()
 		
 	else:
+		clearScr()
 		print("Invalid input!")
+		time.sleep(1.5)
+		
